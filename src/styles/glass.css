@@ -143,3 +143,104 @@ separator.divider {
     min-width: 1px;
     background-color: rgba(255, 255, 255, 0.16);
 }
+/* Quick Launch */
+.launch-btn {
+    background-image: none;
+    background-color: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    border-radius: 14px;
+    box-shadow: none;
+    padding: 6px;
+    min-width: 0;
+    min-height: 0;
+}
+
+.launch-btn:hover {
+    background-image: none;
+    background-color: rgba(255, 255, 255, 0.18);
+}
+
+.launch-btn:active {
+    background-image: none;
+    background-color: rgba(255, 255, 255, 0.26);
+}
+
+/* Media */
+.media-art {
+    background-color: rgba(255, 255, 255, 0.10);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    border-radius: 12px;
+    min-width: 48px;
+    min-height: 48px;
+}
+
+.media-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #ffffff;
+}
+
+.media-artist {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.68);
+}
+
+.media-btn {
+    background-image: none;
+    background-color: rgba(255, 255, 255, 0.10);
+    border: none;
+    box-shadow: none;
+    border-radius: 22px;
+    min-width: 40px;
+    min-height: 40px;
+    padding: 0;
+}
+
+.media-btn:hover {
+    background-image: none;
+    background-color: rgba(255, 255, 255, 0.20);
+}
+
+.media-btn:disabled {
+    opacity: 0.4;
+}
+
+/* Quick Toggles */
+.toggle-btn {
+    background-image: none;
+    background-color: rgba(255, 255, 255, 0.10);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: none;
+    border-radius: 16px;
+    min-width: 0;
+    min-height: 0;
+    padding: 0;
+}
+
+.toggle-btn:hover {
+    background-image: none;
+    background-color: rgba(255, 255, 255, 0.18);
+}
+
+.toggle-btn:checked {
+    background-image: linear-gradient(to bottom, #ffffff, #cfe3ff);
+    border-color: transparent;
+}
+
+.toggle-btn:checked .tile-icon,
+.toggle-btn:checked label {
+    color: #0f1830;
+    text-shadow: none;
+}
+
+/* System */
+.stat-key {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.68);
+}
+
+.stat-val {
+    font-size: 13px;
+    font-weight: 600;
+    color: #ffffff;
+}
