@@ -1,0 +1,145 @@
+/* GlassPanel — dark frosted glass.
+   backdrop.py paints a blurred wallpaper slice under each tile; this file adds
+   the navy tint, sheen, border and typography on top.
+   NOTE: .tile border-radius must match RADIUS in backdrop.py (18). */
+
+window.glass-window,
+window.glass-window.background {
+    background-color: transparent;
+    background-image: none;
+}
+
+window.glass-window label {
+    font-family: "Inter", "SF Pro Display", "Ubuntu", "Cantarell", sans-serif;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+}
+
+.tile {
+    color: #ffffff;
+    background-color: rgba(10, 16, 34, 0.36);
+    background-image: linear-gradient(to bottom,
+                                      rgba(255, 255, 255, 0.12),
+                                      rgba(255, 255, 255, 0.02) 55%,
+                                      rgba(255, 255, 255, 0.05));
+    border: 1px solid rgba(255, 255, 255, 0.20);
+    border-radius: 18px;
+    padding: 16px 18px;
+    /* Small on purpose: must stay inside the window's 24px padding,
+       otherwise it is clipped into a visible line. */
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.22),
+                inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+
+.tile-icon {
+    color: rgba(255, 255, 255, 0.88);
+    -gtk-icon-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+}
+
+.tile-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.94);
+}
+
+.tile-meta {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.68);
+}
+
+.tile-value {
+    font-size: 22px;
+    font-weight: 600;
+    color: #a9dcff;
+}
+
+.rate {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.92);
+}
+
+.disk-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #ffffff;
+}
+
+/* Clock */
+.clock-time {
+    font-size: 44px;
+    font-weight: 300;
+    color: #ffffff;
+}
+
+.clock-weekday {
+    font-size: 16px;
+    font-weight: 600;
+    color: #ffffff;
+}
+
+.clock-date {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.76);
+}
+
+/* Calendar */
+.cal-head {
+    font-size: 12px;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.58);
+}
+
+.cal-day {
+    font-size: 13px;
+    color: #ffffff;
+    border-radius: 14px;
+}
+
+.cal-day.outside {
+    color: rgba(255, 255, 255, 0.28);
+}
+
+.cal-day.today {
+    background-image: linear-gradient(to bottom, #ffffff, #cfe3ff);
+    color: #0f1830;
+    font-weight: 700;
+    text-shadow: none;
+}
+
+.nav-button {
+    background-image: none;
+    background-color: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 0 8px;
+    min-width: 0;
+    min-height: 0;
+    font-size: 18px;
+    color: rgba(255, 255, 255, 0.85);
+    border-radius: 8px;
+}
+
+.nav-button:hover {
+    background-color: rgba(255, 255, 255, 0.16);
+}
+
+/* RAM bar: aqua -> blue, with a soft glow */
+progressbar trough {
+    min-height: 10px;
+    border: none;
+    border-radius: 6px;
+    background-color: rgba(255, 255, 255, 0.12);
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
+progressbar progress {
+    min-height: 10px;
+    border: none;
+    border-radius: 6px;
+    background-image: linear-gradient(to right, #5ee7df, #7aa7ff);
+    box-shadow: 0 0 8px rgba(94, 231, 223, 0.35);
+}
+
+separator.divider {
+    min-width: 1px;
+    background-color: rgba(255, 255, 255, 0.16);
+}
