@@ -1,0 +1,93 @@
+#!/bin/sh
+set -eu
+
+data_home=${XDG_DATA_HOME:-"$HOME/.local/share"}
+case "$data_home" in
+    /*) ;;
+    *) data_home="$HOME/.local/share" ;;
+esac
+config_home=${XDG_CONFIG_HOME:-"$HOME/.config"}
+case "$config_home" in
+    /*) ;;
+    *) config_home="$HOME/.config" ;;
+esac
+
+app_dir="$data_home/glasspanel"
+launcher="$HOME/.local/bin/glasspanel"
+autostart_file="$config_home/autostart/glasspanel.desktop"
+
+set_autostart() {
+    enabled=$1
+    case "$enabled" in
+        on)
+            mkdir -p "$(dirname "$autostart_file")"
+            escaped_launcher=$(printf '%s' "$launcher" | sed 's/\\/\\\\/g; s/"/\\"/g')
+            temporary="$autostart_file.tmp.$$"
+            cat > "$temporary" <<EOF
+[Desktop Entry]
+Type=Application
+Name=GlassPanel
+Comment=Desktop system widget panel
+Exec="$escaped_launcher" start
+Terminal=false
+X-GNOME-Autostart-enabled=true
+EOF
+            chmod 644 "$temporary"
+            mv -f "$temporary" "$autostart_file"
+            printf '%s\n' 'GlassPanel will start at login.'
+            ;;
+        off)
+            rm -f "$autostart_file"
+            printf '%s\n' 'GlassPanel will not start at login.'
+            ;;
+        status)
+            if [ -f "$autostart_file" ]; then
+                printf '%s\n' 'Autostart is enabled.'
+            else
+                printf '%s\n' 'Autostart is disabled.'
+            fi
+            ;;
+        *)
+            printf '%s\n' 'Usage: glasspanel autostart on|off|status' >&2
+            exit 2
+            ;;
+    esac
+}
+
+if [ "$#" -eq 0 ]; then
+    set -- start
+fi
+
+if [ "$1" = autostart ]; then
+    if [ "$#" -ne 2 ]; then
+        printf '%s\n' 'Usage: glasspanel autostart on|off|status' >&2
+        exit 2
+    fi
+    set_autostart "$2"
+    exit 0
+fi
+
+if [ ! -f "$app_dir/src/main.py" ]; then
+    printf '%s\n' 'GlassPanel is not installed. Run scripts/install.sh from the project directory.' >&2
+    exit 1
+fi
+
+if [ "$1" = start ]; then
+    if [ "$#" -ne 1 ]; then
+        printf '%s\n' 'Usage: glasspanel [start|stop|status]' >&2
+        exit 2
+    fi
+    state_home=${XDG_STATE_HOME:-"$HOME/.local/state"}
+    case "$state_home" in
+        /*) ;;
+        *) state_home="$HOME/.local/state" ;;
+    esac
+    log_dir="$state_home/glasspanel"
+    mkdir -p "$log_dir"
+    nohup /usr/bin/python3 "$app_dir/src/main.py" start \
+        >> "$log_dir/glasspanel.log" 2>&1 </dev/null &
+    printf 'GlassPanel is starting in the background. Log: %s/glasspanel.log\n' "$log_dir"
+    exit 0
+fi
+
+exec /usr/bin/python3 "$app_dir/src/main.py" "$@"
