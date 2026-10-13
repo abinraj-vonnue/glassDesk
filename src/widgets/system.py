@@ -65,9 +65,10 @@ def battery():
         capacity = _read(f"{supply}/capacity")
         if capacity is None:
             continue
-        status = _read(f"{supply}/status") or ""
-        suffix = f" · {status}" if status and status != "Unknown" else ""
-        return f"{capacity}%{suffix}"
+        try:
+            return max(0, min(100, int(capacity)))
+        except ValueError:
+            continue
     return None
 
 
@@ -83,6 +84,55 @@ class _Row(Gtk.Box):
         self.value.set_text(self.reader() or "--")
 
 
+class _BatteryRow(Gtk.Box):
+    SEGMENTS = 5
+
+    def __init__(self):
+        super().__init__(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        self.set_valign(Gtk.Align.CENTER)
+        self.pack_start(make_label("Battery", "stat-key"), True, True, 0)
+
+        indicator = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        indicator.set_valign(Gtk.Align.CENTER)
+        self.segments = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=3)
+        self.segments.set_valign(Gtk.Align.CENTER)
+        self.bars = []
+        for _ in range(self.SEGMENTS):
+            bar = Gtk.ProgressBar()
+            bar.get_style_context().add_class("battery-segment")
+            bar.set_size_request(13, 9)
+            bar.set_valign(Gtk.Align.CENTER)
+            self.bars.append(bar)
+            self.segments.pack_start(bar, False, False, 0)
+        indicator.pack_start(self.segments, False, False, 0)
+
+        self.percent = make_label("--%", "stat-val", xalign=1.0)
+        self.percent.set_valign(Gtk.Align.CENTER)
+        indicator.pack_start(self.percent, False, False, 0)
+        self.pack_end(indicator, False, False, 0)
+
+    def update(self):
+        level = battery()
+        if level is None:
+            return
+        self.percent.set_text(f"{level}%")
+        if level <= 20:
+            color = "battery-low"
+        elif level <= 40:
+            color = "battery-medium"
+        elif level <= 60:
+            color = "battery-charged"
+        else:
+            color = "battery-high"
+        for index, bar in enumerate(self.bars):
+            fraction = max(0.0, min(1.0, (level - index * 20) / 20))
+            bar.set_fraction(fraction)
+            context = bar.get_style_context()
+            for css_class in ("battery-low", "battery-medium", "battery-charged", "battery-high"):
+                context.remove_class(css_class)
+            context.add_class(color)
+
+
 class SystemTile(Tile):
     def __init__(self, width=None):
         super().__init__("System", ICONS, width)
@@ -92,13 +142,17 @@ class SystemTile(Tile):
             ("Uptime", uptime),
             ("Load", load),
             ("Temp", temperature),
-            ("Battery", battery),
         ):
             if reader() is None:  # skip sensors this machine doesn't have
                 continue
             row = _Row(key, reader)
             self.rows.append(row)
             self.pack_start(row, False, False, 0)
+
+        if battery() is not None:
+            self.battery_row = _BatteryRow()
+            self.rows.append(self.battery_row)
+            self.pack_start(self.battery_row, False, False, 0)
 
         every(5, self.update)
 

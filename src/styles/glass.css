@@ -244,3 +244,36 @@ separator.divider {
     font-weight: 600;
     color: #ffffff;
 }
+
+/* Segmented battery indicator */
+progressbar.battery-segment trough {
+    min-width: 13px;
+    min-height: 8px;
+    border: none;
+    border-radius: 2px;
+    background-color: rgba(255, 255, 255, 0.14);
+    box-shadow: none;
+}
+
+progressbar.battery-segment progress {
+    min-height: 8px;
+    border: none;
+    border-radius: 2px;
+    box-shadow: none;
+}
+
+progressbar.battery-segment.battery-low progress {
+    background-image: linear-gradient(to bottom, #ff7777, #e94f5b);
+}
+
+progressbar.battery-segment.battery-medium progress {
+    background-image: linear-gradient(to bottom, #ffd36b, #f0a43a);
+}
+
+progressbar.battery-segment.battery-charged progress {
+    background-image: linear-gradient(to bottom, #d4ef79, #a3cf48);
+}
+
+progressbar.battery-segment.battery-high progress {
+    background-image: linear-gradient(to bottom, #82f0a5, #36c978);
+}
