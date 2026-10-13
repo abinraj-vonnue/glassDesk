@@ -7,7 +7,7 @@ import gi
 gi.require_version("Gtk", "3.0")
 gi.require_version("Gdk", "3.0")
 
-from gi.repository import Gdk, GLib, Gtk
+from gi.repository import Gdk, Gio, GLib, Gtk
 
 from backdrop import BACKDROP
 from widgets import (
@@ -22,6 +22,7 @@ from widgets import (
     StorageTile,
     SystemTile,
 )
+from settings import load_settings
 
 STYLE_PATH = Path(__file__).parent / "styles" / "glass.css"
 
@@ -55,9 +56,9 @@ def column(*tiles):
     return box
 
 
-class GlassPanel(Gtk.Window):
-    def __init__(self):
-        super().__init__(title="GlassPanel")
+class GlassPanel(Gtk.ApplicationWindow):
+    def __init__(self, application, settings):
+        super().__init__(application=application, title="GlassPanel")
 
         self.set_decorated(False)
         self.set_resizable(False)
@@ -79,23 +80,22 @@ class GlassPanel(Gtk.Window):
         layout.set_margin_end(PAD)
         layout.set_margin_top(PAD)
         layout.set_margin_bottom(PAD)
-        layout.pack_start(
-            column(
-                QuickLaunchTile(COL_A),
-                MediaTile(COL_A),
-                QuickTogglesTile(COL_A),
-                SystemTile(COL_A),
-            ),
-            False, False, 0,
-        )
-        layout.pack_start(
-            column(ClockTile(COL_B), CpuTile(COL_B), NetworkTile(COL_B)),
-            False, False, 0,
-        )
-        layout.pack_start(
-            column(CalendarTile(COL_C), RamTile(COL_C), StorageTile(COL_C)),
-            False, False, 0,
-        )
+        self._add_column(layout, settings, COL_A, (
+            ("quick_launch", QuickLaunchTile),
+            ("media", MediaTile),
+            ("quick_toggles", QuickTogglesTile),
+            ("system", SystemTile),
+        ))
+        self._add_column(layout, settings, COL_B, (
+            ("clock", lambda width: ClockTile(width, settings["clock"]["format"])),
+            ("cpu", CpuTile),
+            ("network", NetworkTile),
+        ))
+        self._add_column(layout, settings, COL_C, (
+            ("calendar", CalendarTile),
+            ("ram", RamTile),
+            ("storage", StorageTile),
+        ))
         self.add(layout)
 
         # The blurred slice depends on where the window sits, so redraw on moves.
@@ -103,6 +103,12 @@ class GlassPanel(Gtk.Window):
         screen = Gdk.Screen.get_default()
         screen.connect("monitors-changed", self._on_monitors_changed)
         screen.connect("size-changed", self._on_monitors_changed)
+
+    @staticmethod
+    def _add_column(layout, settings, width, entries):
+        tiles = [factory(width) for key, factory in entries if settings["tiles"][key]]
+        if tiles:
+            layout.pack_start(column(*tiles), False, False, 0)
 
     def _enable_transparency(self):
         screen = self.get_screen()
@@ -135,14 +141,63 @@ class GlassPanel(Gtk.Window):
         self.queue_draw()
 
 
-def main():
-    load_css()
-    panel = GlassPanel()
-    panel.connect("destroy", Gtk.main_quit)
-    panel.show_all()
-    panel.place()
-    GLib.unix_signal_add(GLib.PRIORITY_DEFAULT, signal.SIGINT, Gtk.main_quit)
-    Gtk.main()
+class GlassPanelApplication(Gtk.Application):
+    def __init__(self):
+        super().__init__(
+            application_id="io.github.glasspanel.GlassPanel",
+            flags=Gio.ApplicationFlags.HANDLES_COMMAND_LINE,
+        )
+        self.panel = None
+        self.settings = load_settings()
+
+    def do_activate(self):
+        if self.panel is None:
+            load_css()
+            self.panel = GlassPanel(self, self.settings)
+            self.panel.connect("destroy", self._on_panel_destroyed)
+            self.panel.show_all()
+            self.panel.place()
+        else:
+            self.panel.present()
+
+    def _on_panel_destroyed(self, *_):
+        self.panel = None
+
+    def do_command_line(self, command_line):
+        args = command_line.get_arguments()[1:]
+        action = args[0] if args else "start"
+
+        if action == "start" and len(args) <= 1:
+            self.activate()
+            return 0
+        if action == "status" and len(args) == 1:
+            if self.panel is None:
+                command_line.print_literal("GlassPanel is stopped.\n")
+                GLib.idle_add(self.quit)
+                return 1
+            command_line.print_literal("GlassPanel is running.\n")
+            return 0
+        if action == "stop" and len(args) == 1:
+            if self.panel is None:
+                command_line.print_literal("GlassPanel is stopped.\n")
+                GLib.idle_add(self.quit)
+                return 0
+            self.panel.destroy()
+            self.panel = None
+            command_line.print_literal("GlassPanel stopped.\n")
+            GLib.idle_add(self.quit)
+            return 0
+
+        command_line.printerr_literal(
+            "Usage: glasspanel [start|stop|status]\n"
+        )
+        return 2
+
+
+def main(argv=None):
+    application = GlassPanelApplication()
+    GLib.unix_signal_add(GLib.PRIORITY_DEFAULT, signal.SIGINT, application.quit)
+    return application.run(argv or sys.argv)
 
 
 if __name__ == "__main__":

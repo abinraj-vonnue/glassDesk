@@ -81,8 +81,9 @@ class Dial(Gtk.DrawingArea):
 
 
 class ClockTile(Tile):
-    def __init__(self, width=None):
+    def __init__(self, width=None, hour_format="24h"):
         super().__init__(icons=ICONS, width=width)
+        self.hour_format = hour_format
 
         self.zone = make_label("", "tile-meta")
         self.add_header_end(self.zone)
@@ -108,7 +109,14 @@ class ClockTile(Tile):
     def update(self):
         now = datetime.now().astimezone()
         self.dial.set_time(now)
-        self.time.set_markup(f'{now:%H}<span alpha="60%">:</span>{now:%M}')
+        if self.hour_format == "12h":
+            hour = now.strftime("%I").lstrip("0") or "12"
+            self.time.set_markup(
+                f'{hour}<span alpha="60%">:</span>{now:%M} '
+                f'<span size="small">{now:%p}</span>'
+            )
+        else:
+            self.time.set_markup(f'{now:%H}<span alpha="60%">:</span>{now:%M}')
         self.weekday.set_text(now.strftime("%A"))
         self.date.set_text(now.strftime("%d %B %Y"))
         self.zone.set_text(now.strftime("%Z"))
