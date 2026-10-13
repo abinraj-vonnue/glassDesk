@@ -14,15 +14,20 @@ from widgets import (
     CalendarTile,
     ClockTile,
     CpuTile,
+    MediaTile,
     NetworkTile,
+    QuickLaunchTile,
+    QuickTogglesTile,
     RamTile,
     StorageTile,
+    SystemTile,
 )
 
 STYLE_PATH = Path(__file__).parent / "styles" / "glass.css"
 
-LEFT_WIDTH = 360
-RIGHT_WIDTH = 300
+COL_A = 280  # apps / media / toggles / system
+COL_B = 340  # clock / cpu / network
+COL_C = 290  # calendar / ram / storage
 GAP = 14
 MARGIN = 20  # distance from the top-right corner of the work area to the tiles
 PAD = 24     # transparent room around the tiles so drop shadows aren't clipped
@@ -40,6 +45,14 @@ def load_css():
         provider,
         Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION,
     )
+
+
+def column(*tiles):
+    box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=GAP)
+    box.set_valign(Gtk.Align.START)
+    for tile in tiles:
+        box.pack_start(tile, False, False, 0)
+    return box
 
 
 class GlassPanel(Gtk.Window):
@@ -60,24 +73,29 @@ class GlassPanel(Gtk.Window):
         self._refresh_backdrop()  # must happen before the tiles first draw
         BACKDROP.watch(self._refresh_backdrop)
 
-        left = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=GAP)
-        left.pack_start(ClockTile(LEFT_WIDTH), False, False, 0)
-        left.pack_start(CpuTile(LEFT_WIDTH), False, False, 0)
-        left.pack_start(NetworkTile(LEFT_WIDTH), False, False, 0)
-
-        right = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=GAP)
-        right.pack_start(CalendarTile(RIGHT_WIDTH), False, False, 0)
-        right.pack_start(RamTile(RIGHT_WIDTH), False, False, 0)
-        right.pack_start(StorageTile(RIGHT_WIDTH), False, False, 0)
-
         layout = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=GAP)
         layout.set_valign(Gtk.Align.START)
         layout.set_margin_start(PAD)
         layout.set_margin_end(PAD)
         layout.set_margin_top(PAD)
         layout.set_margin_bottom(PAD)
-        layout.pack_start(left, False, False, 0)
-        layout.pack_start(right, False, False, 0)
+        layout.pack_start(
+            column(
+                QuickLaunchTile(COL_A),
+                MediaTile(COL_A),
+                QuickTogglesTile(COL_A),
+                SystemTile(COL_A),
+            ),
+            False, False, 0,
+        )
+        layout.pack_start(
+            column(ClockTile(COL_B), CpuTile(COL_B), NetworkTile(COL_B)),
+            False, False, 0,
+        )
+        layout.pack_start(
+            column(CalendarTile(COL_C), RamTile(COL_C), StorageTile(COL_C)),
+            False, False, 0,
+        )
         self.add(layout)
 
         # The blurred slice depends on where the window sits, so redraw on moves.
