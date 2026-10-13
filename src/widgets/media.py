@@ -14,7 +14,7 @@ ART_ICONS = ("audio-x-generic-symbolic", "emblem-music-symbolic", "multimedia-pl
 
 
 class _Mpris:
-    """Minimal MPRIS client over the session bus."""
+    """Minimal asynchronous MPRIS client over the session bus."""
 
     def __init__(self):
         try:
@@ -22,58 +22,83 @@ class _Mpris:
         except GLib.Error:
             self.bus = None
 
-    def _call(self, name, path, iface, method, params=None, reply=None):
+    def _call(self, name, path, iface, method, params, reply, callback):
         reply_type = GLib.VariantType.new(reply) if reply else None
-        return self.bus.call_sync(
+        self.bus.call(
             name, path, iface, method, params, reply_type,
-            Gio.DBusCallFlags.NONE, 500, None,
+            Gio.DBusCallFlags.NONE, 1000, None,
+            lambda connection, result: self._finish(connection, result, callback),
         )
 
-    def current(self):
-        """(bus_name, status, title, artist) for the best player, or None."""
-        if self.bus is None:
-            return None
+    @staticmethod
+    def _finish(connection, result, callback):
         try:
-            names = self._call(
-                "org.freedesktop.DBus", "/org/freedesktop/DBus",
-                "org.freedesktop.DBus", "ListNames", None, "(as)",
-            ).unpack()[0]
-        except GLib.Error:
-            return None
+            reply = connection.call_finish(result)
+        except GLib.Error as exc:
+            callback(None, exc)
+            return
+        callback(reply, None)
 
-        best = None
-        for name in names:
-            if not name.startswith(MPRIS_PREFIX):
-                continue
-            try:
-                props = self._call(
+    def current(self, callback):
+        """Call back with (bus_name, status, title, artist), or None."""
+        if self.bus is None:
+            callback(None)
+            return
+
+        def on_names(reply, error):
+            if error is not None:
+                callback(None)
+                return
+            names = reply.unpack()[0]
+            players = [name for name in names if name.startswith(MPRIS_PREFIX)]
+
+            def inspect_next(index, best):
+                if index >= len(players):
+                    callback(best)
+                    return
+                name = players[index]
+
+                def on_properties(reply, error):
+                    if error is not None:
+                        inspect_next(index + 1, best)
+                        return
+                    props = reply.unpack()[0]
+                    meta = props.get("Metadata", {})
+                    artist = meta.get("xesam:artist", [])
+                    if isinstance(artist, str):
+                        artist = [artist]
+                    entry = (
+                        name,
+                        props.get("PlaybackStatus", "Stopped"),
+                        meta.get("xesam:title", ""),
+                        ", ".join(artist),
+                    )
+                    if entry[1] == "Playing":
+                        callback(entry)
+                    else:
+                        inspect_next(index + 1, best or entry)
+
+                self._call(
                     name, PLAYER_PATH, PROPS_IFACE, "GetAll",
-                    GLib.Variant("(s)", (PLAYER_IFACE,)), "(a{sv})",
-                ).unpack()[0]
-            except GLib.Error:
-                continue
-            meta = props.get("Metadata", {})
-            artist = meta.get("xesam:artist", [])
-            if isinstance(artist, str):
-                artist = [artist]
-            entry = (
-                name,
-                props.get("PlaybackStatus", "Stopped"),
-                meta.get("xesam:title", ""),
-                ", ".join(artist),
-            )
-            if entry[1] == "Playing":
-                return entry
-            best = best or entry
-        return best
+                    GLib.Variant("(s)", (PLAYER_IFACE,)), "(a{sv})", on_properties,
+                )
+
+            inspect_next(0, None)
+
+        self._call(
+            "org.freedesktop.DBus", "/org/freedesktop/DBus",
+            "org.freedesktop.DBus", "ListNames", None, "(as)", on_names,
+        )
 
     def send(self, name, method):
         if self.bus is None:
             return
-        try:
-            self._call(name, PLAYER_PATH, PLAYER_IFACE, method)
-        except GLib.Error:
-            pass
+
+        def on_sent(_reply, error):
+            if error is not None:
+                print(f"GlassPanel: media command failed: {error.message}")
+
+        self._call(name, PLAYER_PATH, PLAYER_IFACE, method, None, None, on_sent)
 
 
 class MediaTile(Tile):
@@ -83,6 +108,7 @@ class MediaTile(Tile):
 
         self._mpris = _Mpris()
         self._player = None
+        self._querying = False
 
         art = Gtk.Box()
         art.get_style_context().add_class("media-art")
@@ -139,7 +165,13 @@ class MediaTile(Tile):
             self.update()
 
     def update(self):
-        state = self._mpris.current()
+        if self._querying:
+            return
+        self._querying = True
+        self._mpris.current(self._show_state)
+
+    def _show_state(self, state):
+        self._querying = False
         self._player = state[0] if state else None
         if state is None:
             title, artist, playing = "Nothing playing", "", False
