@@ -46,14 +46,14 @@ def _mute_toggle():
     def read():
         out = subprocess.run(
             ["pactl", "get-sink-mute", "@DEFAULT_SINK@"],
-            capture_output=True, text=True, timeout=1,
+            capture_output=True, text=True, timeout=1, check=True,
         ).stdout
         return "yes" in out.lower()
 
     def write(on):
         subprocess.run(
             ["pactl", "set-sink-mute", "@DEFAULT_SINK@", "1" if on else "0"],
-            timeout=1,
+            timeout=1, check=True,
         )
 
     return read, write
